@@ -9,6 +9,7 @@ export interface StateContextType {
   error: TwilioError | null;
   setError(error: TwilioError | null): void;
   getToken(name: string, room: string, passcode?: string): Promise<string>;
+  sendTextInvite(phoneNumber: string): Promise<string>;
   user?: User | null | { displayName: undefined; photoURL: undefined; passcode?: string };
   signIn?(passcode?: string): Promise<void>;
   signOut?(): Promise<void>;
@@ -64,9 +65,17 @@ export default function AppStateProvider(props: React.PropsWithChildren<{}>) {
         const headers = new window.Headers();
         const endpoint = process.env.REACT_APP_TOKEN_ENDPOINT || '/token';
         const params = new window.URLSearchParams({ identity, roomName });
-
         return fetch(`${endpoint}?${params}`, { headers }).then(res => res.text());
       },
+      sendTextInvite: async (phoneNumber) => {
+        return fetch('/invite', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({'to': `+1${phoneNumber}`})
+        }).then(res => res.json());
+      }
     };
   }
 
@@ -85,7 +94,22 @@ export default function AppStateProvider(props: React.PropsWithChildren<{}>) {
       });
   };
 
-  return <StateContext.Provider value={{ ...contextValue, getToken }}>{props.children}</StateContext.Provider>;
+  const sendTextInvite: StateContextType['sendTextInvite'] = (phoneNumber) => {
+    setIsFetching(true);
+    return contextValue
+      .sendTextInvite(phoneNumber)
+      .then(res => {
+        setIsFetching(false);
+        return res;
+      })
+      .catch(err => {
+        setError(err);
+        setIsFetching(false);
+        return Promise.reject(err);
+      });
+  }
+
+  return <StateContext.Provider value={{ ...contextValue, getToken, sendTextInvite }}>{props.children}</StateContext.Provider>;
 }
 
 export function useAppState() {
