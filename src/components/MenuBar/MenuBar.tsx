@@ -5,6 +5,7 @@ import AppBar from '@material-ui/core/AppBar';
 import Button from '@material-ui/core/Button';
 import CircularProgress from '@material-ui/core/CircularProgress';
 import TextField from '@material-ui/core/TextField';
+import InputAdornment from '@material-ui/core/InputAdornment';
 import ToggleFullscreenButton from './ToggleFullScreenButton/ToggleFullScreenButton';
 import Toolbar from '@material-ui/core/Toolbar';
 import Menu from './Menu/Menu';
@@ -56,18 +57,22 @@ const useStyles = makeStyles((theme: Theme) =>
     joinButton: {
       margin: '1em',
     },
+    leftMenu: {
+      display: 'inline-flex',
+    },
   })
 );
 
 export default function MenuBar() {
   const classes = useStyles();
   const { URLRoomName } = useParams();
-  const { user, getToken, isFetching } = useAppState();
+  const { user, getToken, isFetching, sendTextInvite } = useAppState();
   const { isConnecting, connect, isAcquiringLocalTracks } = useVideoContext();
   const roomState = useRoomState();
 
   const [name, setName] = useState<string>(user?.displayName || '');
   const [roomName, setRoomName] = useState<string>('');
+  const [phoneNumber, setPhoneNumber] = useState<string>('');
 
   useEffect(() => {
     if (URLRoomName) {
@@ -83,6 +88,10 @@ export default function MenuBar() {
     setRoomName(event.target.value);
   };
 
+  const handlePhoneNumberChange = (event: ChangeEvent<HTMLInputElement>) => {
+    setPhoneNumber(event.target.value);
+  };
+
   const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     // If this app is deployed as a twilio function, don't change the URL because routing isn't supported.
@@ -90,6 +99,12 @@ export default function MenuBar() {
       window.history.replaceState(null, '', window.encodeURI(`/room/${roomName}${window.location.search || ''}`));
     }
     getToken(name, roomName).then(token => connect(token));
+  };
+
+  const handleInvitationSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    console.log(phoneNumber);
+    sendTextInvite(phoneNumber);
   };
 
   return (
@@ -131,7 +146,30 @@ export default function MenuBar() {
             {(isConnecting || isFetching) && <CircularProgress className={classes.loadingSpinner} />}
           </form>
         ) : (
-          <h3>{roomName}</h3>
+          <div className={classes.leftMenu}>
+            <h3>{roomName}</h3>
+            <form className={classes.form} onSubmit={handleInvitationSubmit}>
+              <TextField
+                id="send-to"
+                label="Send a text meeting invite"
+                className={classes.textField}
+                value={phoneNumber}
+                onChange={handlePhoneNumberChange}
+                margin="dense"
+                InputProps={{
+                  startAdornment: <InputAdornment position="start">+1</InputAdornment>,
+                }}
+              />
+              <Button
+                  variant="outlined"
+                  color="default"
+                  className={classes.joinButton}
+                  type="submit"
+                >
+                  Send Invite
+              </Button>
+            </form>
+          </div>
         )}
         <div className={classes.rightButtonContainer}>
           <FlipCameraButton />
